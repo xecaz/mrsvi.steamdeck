@@ -10,6 +10,7 @@ What works:
 - Key press and release events
 - Brightness, clear and sleep
 - A persistent custom boot picture
+- A boot animation: 75 frames played at power-on, using a small patch to the deck's OS
 - A figure-8 scroller that moves one large image across the keys and the strip as if they
   were windows onto a single screen
 
@@ -87,6 +88,7 @@ For the right-hand strip, use `encode_jpeg()` + `set_key_jpeg()` with the slice 
 | `tools/strip_test.py`, `tools/strip_columns.py` | Oversized single-slot strip probes (see the warning below) |
 | `tools/listen.py` | Dump raw input reports |
 | `tools/build_boot_anim.py` | Build a data partition with boot-animation frames and pack it into a flashable `.img` (needs `littlefs-python`) |
+| `tools/patch_os.py` | Patch the stock OS so it plays those frames at boot; writes a flashable `.img` (needs `capstone`) |
 | `70-mirabox-streamdock.rules` | udev rule for non-root access |
 | `calib_grid.png` | Coordinate grid used to measure the layout as a boot picture |
 
@@ -145,9 +147,10 @@ in `fw/`, which is gitignored because those files belong to the vendor.
 - **Partitions:** `spl`, `env`, `os` (FIT image, CRC32 + MD5, unsigned), `rodata` (FAT12) and
   `data` (littlefs v2, 5 MB, about 4.4 MB free).
 - **Boot picture:** stored as `/data/logo_jpg_dir/test_logo.jpg` and shown for about 2 s. The
-  firmware has no multi-frame or animation support.
-- **Boot animation idea:** a 3-second figure-8 boot animation would need a small OS patch that
-  loops over frame files in the data partition. Not attempted yet; see the recovery limits below.
+  stock firmware has no multi-frame or animation support.
+- **Boot animation (working on the device since 2026-10-03):** a patched OS plays
+  `f00.jpg`..`f74.jpg` from the data partition, then the normal boot picture. See
+  [Boot animation](#boot-animation) below and `re/PATCH_NOTES.md`.
 
 ### Upgrade mode and recovery
 
@@ -171,8 +174,10 @@ Details and evidence: `re/UPGRADE_NOTES.md`.
   - Upstream's CLI always writes `spl,env,os`, so check the plan with `--plan-only` first.
 - **Custom data partition (verified):** `tools/build_boot_anim.py` builds a data partition holding
   the logo plus 75 figure-8 animation frames, and packs it into a flashable `.img`. The deck boots
-  normally from it. The stock OS only shows the static logo, so playing the frames still needs an
-  OS patch.
+  normally from it. The stock OS ignores the frames; `tools/patch_os.py` makes it play them.
+- **Patched OS (verified):** the boot-animation OS was flashed with `--parts os`. The deck
+  boots, plays the animation, enumerates as `6603:1014` and still answers `APP`, so it can
+  still be reflashed over USB.
 - **No key is a recovery button.** The bootloader's hardware upgrade pin is PA0, active low, and on
   this board PA0 is the internal UART0 TX pad. The 15 keys are a matrix on port B/C pins.
 - **A broken OS can't be recovered over USB.** If a modified OS fails its CRC check, the
@@ -182,3 +187,51 @@ Details and evidence: `re/UPGRADE_NOTES.md`.
   - Any OS patch must therefore keep the HID `APP` path working. Changing only the `data`
     partition, while keeping the stock OS, is the low-risk option.
 - **Never send `APP` casually.** It isn't a handshake: it reboots the deck into upgrade mode.
+
+### Boot animation
+
+The deck can play a short animation at power-on. This needs two flashes: a data partition that
+holds the frames, and a patched OS that plays them. **Flashing the OS is the one step that can
+brick the deck:** an OS that crashes before USB starts can only be recovered by opening the case
+(see above). Use the patch below as-is, and check every changed version offline first.
+
+```sh
+# 1. Frames + boot picture -> fw/out/V3.HSV293S.02.009-anim.img (data partition)
+python3 tools/build_boot_anim.py fw/V3.HSV293S.02.009.img deckbg.png
+
+# 2. Patched OS -> fw/out/V3.HSV293S.02.009-bootanim-os.img (os partition)
+python3 tools/patch_os.py fw/V3.HSV293S.02.009.img fw/out/V3.HSV293S.02.009-bootanim-os.img
+
+# 3. For each image: send CRT APP (upgrade mode, 33c3:6677), check the plan, then flash
+artinchip-flash burn --plan-only --parts data fw/out/V3.HSV293S.02.009-anim.img
+artinchip-flash burn --parts data fw/out/V3.HSV293S.02.009-anim.img
+artinchip-flash burn --plan-only --parts os fw/out/V3.HSV293S.02.009-bootanim-os.img
+artinchip-flash burn --parts os fw/out/V3.HSV293S.02.009-bootanim-os.img
+```
+
+After each flash, the deck resets itself and comes back as `6603:1014` in about 10 s.
+
+What the patch does, all inside the OS's first code segment (details in `re/PATCH_NOTES.md`):
+
+1. The function that shows the boot logo (`0x40032700`) now takes the file path as an argument,
+   instead of using a fixed string.
+2. The splash thread's call to it (`0x400327f2`) is redirected into a code cave: the body of the
+   unused `test_clock` console test command (`0x40026dc8`, 672 bytes). On the first pass after
+   power-on, the cave shows `f00`..`f74` with a 20 ms delay between frames, then shows
+   `test_logo.jpg` as before. Later calls (`CLE`, after `LOG`) behave exactly like the stock OS.
+3. The `test_clock` console command now points at `version`, so the cave can't be run by name.
+
+The script then recomputes the FIT crc32/md5 and the package's META crc, since the firmware has no
+signatures. It asserts that the stock bytes are what it expects before writing anything, and
+prints a disassembly of the result for review.
+
+Knobs: `DELAY_MS` and `NFRAMES` in `patch_os.py`. `NFRAMES` has to match the frame count from
+`build_boot_anim.py` (`--fig8` + `--zoom`, 60 + 15 by default), and can be at most 100. USB
+starts only after the animation, so a longer animation delays enumeration by the same amount.
+
+**Rollback:** flash the stock `fw/V3.HSV293S.02.009.img` with `--parts os`. Add `--parts data`
+too to restore the stock logo.
+
+`artinchip-flash` is [boa-w/artinchip-flash](https://github.com/boa-w/artinchip-flash) at
+`f382c57` plus `re/artinchip-flash-parts.patch`. Build it with the `serialport` crate's default
+features turned off.
