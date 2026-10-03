@@ -160,9 +160,14 @@ Details and evidence: `re/UPGRADE_NOTES.md`.
     `0x81` IN and `0x02` OUT. The screen goes black.
 - **Leaving it without flashing (verified):** unplug and replug. The deck boots normally as
   `6603:1014`, firmware `V3.HSV293S.02.009`, with the custom boot picture intact.
-- **Flashing:** in that mode the vendor's `upgcmdHid.exe` speaks ArtInChip's AICUPG protocol over
-  bulk USB. The Linux tool [artinchip-flash](https://github.com/boa-w/artinchip-flash) implements
-  the same protocol; it needs a udev rule for `33c3:6677`. Not used yet.
+- **Flashing (verified for the data partition):** in that mode the deck speaks ArtInChip's
+  AICUPG protocol over bulk USB.
+  - The Linux tool [artinchip-flash](https://github.com/boa-w/artinchip-flash) works with it,
+    using the udev rule in this repo.
+  - With `re/artinchip-flash-parts.patch` (adds `burn --parts` and `--plan-only`), the stock
+    `data` partition was flashed on its own. The deck reset and booted normally, with the stock
+    boot picture.
+  - Upstream's CLI always writes `spl,env,os`, so check the plan with `--plan-only` first.
 - **No key is a recovery button.** The bootloader's hardware upgrade pin is PA0, active low, and on
   this board PA0 is the internal UART0 TX pad. The 15 keys are a matrix on port B/C pins.
 - **A broken OS can't be recovered over USB.** If a modified OS fails its CRC check, the

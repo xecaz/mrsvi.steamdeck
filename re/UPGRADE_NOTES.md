@@ -33,6 +33,37 @@ Ran artinchip-flash (github.com/boa-w/artinchip-flash @ f382c57). It was built w
   the updater SPL is loaded.
 - After a replug the deck was back as 6603:1014, V3.HSV293S.02.009, with the logo intact.
 
+### Data-partition-only flash of the stock image (2026-10-03)
+
+artinchip-flash was patched with `re/artinchip-flash-parts.patch` (applies to f382c57). The
+patch adds `burn --parts <list>` and `burn --plan-only`. Upstream's CLI always writes
+spl,env,os. Only selected target components are transferred (device.rs: the target loop
+filters `c.selected`).
+
+```
+artinchip-flash burn --plan-only --parts data fw/V3.HSV293S.02.009.img   # check the plan offline
+# send CRT APP, wait for 33c3:6677, then:
+artinchip-flash burn --parts data fw/V3.HSV293S.02.009.img
+```
+
+Result:
+- updater.psram and updater.spl went to RAM, CRC OK.
+- The device re-enumerated as the updater (still 33c3:6677).
+- The tool logged "Setting upgrade mode to FULL_DISK_UPGRADE". Despite the name, only the
+  components sent were written.
+- image.info (CRC 0x9c97cd3b), then image.target.data, 5 MB at offset 0x1ba800, CRC OK
+  0xd87b78bd.
+- SET_UPG_END, then an automatic reset.
+- About 1 s later the deck was back as 6603:1014, V3.HSV293S.02.009. It booted with the stock
+  logo, because the data partition was replaced. That shows spl and os were untouched and
+  working.
+- The custom logo was re-uploaded with LOG afterwards.
+
+This proves the full Linux flashing path end to end, and that a data-only flash is safe and
+self-resetting. Writing a modified data partition (e.g. extra frame files) works the same way:
+build a littlefs image of the same geometry (4 KB blocks, 1280 blocks) and put it into an
+.img with recomputed CRCs.
+
 Everything below is the static analysis that predicted this. No USB or HID device was touched
 during it.
 Each claim is tagged [V] (verified in code or data) or [I] (inferred).
