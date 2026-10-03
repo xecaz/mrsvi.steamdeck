@@ -60,7 +60,24 @@ Result:
 - The custom logo was re-uploaded with LOG afterwards.
 
 This proves the full Linux flashing path end to end, and that a data-only flash is safe and
-self-resetting. Writing a modified data partition (e.g. extra frame files) works the same way:
+self-resetting.
+
+### Custom data partition with animation frames (2026-10-03)
+
+`tools/build_boot_anim.py fw/V3.HSV293S.02.009.img deckbg.png` (run with `.venv/bin/python`,
+which has littlefs-python) builds a new data littlefs:
+- The stock files are kept, `test_logo.jpg` is the custom logo, and `f00.jpg`-`f74.jpg` hold a
+  60-frame figure-8 plus a 15-frame zoom out to the logo. That's 3.36 MB; 998 of 1280 blocks are
+  used.
+- The superblock must match stock exactly: disk version 2.0, 4096 x 1280 blocks, **name_max 32**,
+  file_max 0x7fffffff, attr_max 1022. Commits are padded to 64 bytes, so prog_size is 64.
+  A first build with name_max 255 would not have mounted on the device.
+- The output `fw/out/V3.HSV293S.02.009-anim.img` differs from stock only inside the data partition
+  and in the data META CRC field at 0x1690.
+
+Flashed with `burn --parts data`: CRC OK 0x307e26c5, automatic reset, and the deck booted showing
+the custom logo. **The firmware mounts and reads a littlefs built on Linux.** The frames are not
+played yet; that needs the OS patch. Writing a modified data partition (e.g. extra frame files) works the same way:
 build a littlefs image of the same geometry (4 KB blocks, 1280 blocks) and put it into an
 .img with recomputed CRCs.
 

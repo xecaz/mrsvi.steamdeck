@@ -86,6 +86,7 @@ For the right-hand strip, use `encode_jpeg()` + `set_key_jpeg()` with the slice 
 | `tools/strip_split_test.py` | Fill the strip with three labelled slices |
 | `tools/strip_test.py`, `tools/strip_columns.py` | Oversized single-slot strip probes (see the warning below) |
 | `tools/listen.py` | Dump raw input reports |
+| `tools/build_boot_anim.py` | Build a data partition with boot-animation frames and pack it into a flashable `.img` (needs `littlefs-python`) |
 | `70-mirabox-streamdock.rules` | udev rule for non-root access |
 | `calib_grid.png` | Coordinate grid used to measure the layout as a boot picture |
 
@@ -168,6 +169,10 @@ Details and evidence: `re/UPGRADE_NOTES.md`.
     `data` partition was flashed on its own. The deck reset and booted normally, with the stock
     boot picture.
   - Upstream's CLI always writes `spl,env,os`, so check the plan with `--plan-only` first.
+- **Custom data partition (verified):** `tools/build_boot_anim.py` builds a data partition holding
+  the logo plus 75 figure-8 animation frames, and packs it into a flashable `.img`. The deck boots
+  normally from it. The stock OS only shows the static logo, so playing the frames still needs an
+  OS patch.
 - **No key is a recovery button.** The bootloader's hardware upgrade pin is PA0, active low, and on
   this board PA0 is the internal UART0 TX pad. The 15 keys are a matrix on port B/C pins.
 - **A broken OS can't be recovered over USB.** If a modified OS fails its CRC check, the
