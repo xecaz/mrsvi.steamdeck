@@ -2,3 +2,5 @@
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6603", ATTRS{idProduct}=="1014", MODE="0660", TAG+="uaccess"
 SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6603", ATTRS{idProduct}=="1005", MODE="0660", TAG+="uaccess"
 SUBSYSTEM=="usb", ATTR{idVendor}=="6603", MODE="0660", TAG+="uaccess"
+# ArtInChip boot-ROM USB upgrade mode (the deck after the CRT "APP" command)
+SUBSYSTEM=="usb", ATTR{idVendor}=="33c3", ATTR{idProduct}=="6677", MODE="0660", TAG+="uaccess"

@@ -11,8 +11,27 @@ Test A from the end of this file was run once:
 4. Unplug and replug: back as `6603:1014`, firmware `V3.HSV293S.02.009`, custom boot logo intact,
    commands accepted.
 
-Not done: AICUPG commands such as GET_HWINFO in upgrade mode. That needs artinchip-flash built
-(cargo) plus a udev rule for 33c3:6677.
+### GET_HWINFO in upgrade mode (2026-10-03)
+
+Ran artinchip-flash (github.com/boa-w/artinchip-flash @ f382c57). It was built with
+`serialport = { default-features = false }` because libudev-dev is not installed. Command:
+`artinchip-flash info`. Only read queries were sent. The udev rule for 33c3:6677 is in
+`70-mirabox-streamdock.rules`.
+
+- GET_HWINFO returned CSW status 0 and a 108-byte payload:
+  ```
+  48 57 49 4e 46 4f 00 00  "HWINFO"
+  32 30 32 33 2d 30 37 2d 31 39 20 30 38 3a 35 34 3a 31 31  "2023-07-19 08:54:11" (BROM build)
+  13 00 ... 00
+  @44: 42 50 d2 78 26 12 02 05 a2 0b 32 7e 04 00 70 04   chip ID
+  @64: 36 00 00 00 07 00 00 00 03 00 03 16 ...           unknown
+  ```
+- The first 6 chip-ID bytes, `4250D2782612`, are the deck's USB serial number in normal mode.
+- artinchip-flash's HwInfo parser assumes a different layout. It prints the date bytes as
+  "Init mode / Current mode / Boot stage", and those values are meaningless.
+- GET_STORAGE_MEDIA returned CSW status 1 (rejected). This is expected in the BROM stage, before
+  the updater SPL is loaded.
+- After a replug the deck was back as 6603:1014, V3.HSV293S.02.009, with the logo intact.
 
 Everything below is the static analysis that predicted this. No USB or HID device was touched
 during it.
