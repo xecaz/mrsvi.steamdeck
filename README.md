@@ -146,7 +146,29 @@ in `fw/`, which is gitignored because those files belong to the vendor.
 - **Boot picture:** stored as `/data/logo_jpg_dir/test_logo.jpg` and shown for about 2 s. The
   firmware has no multi-frame or animation support.
 - **Boot animation idea:** a 3-second figure-8 boot animation would need a small OS patch that
-  loops over frame files in the data partition.
-- **Status:** not attempted yet. The recovery path is still unknown: the ArtInChip boot-ROM USB
-  upgrade mode, and which pin or button triggers it on this board. So a bad OS image could brick
-  the device.
+  loops over frame files in the data partition. Not attempted yet; see the recovery limits below.
+
+### Upgrade mode and recovery
+
+Details and evidence: `re/UPGRADE_NOTES.md`.
+
+- **Entering upgrade mode (verified on the device):** send `CRT\0\0APPNEW` as a normal 1025-byte
+  hidraw write. The firmware runs its `aicupg` shell command, which sets a one-shot reboot flag in
+  an RTC register (not flash) and resets.
+  - About 2 seconds later the deck re-enumerates as **`33c3:6677` "Artinchip Device"**: the
+    D13x boot ROM's USB upgrade mode. It has a vendor-specific interface with bulk endpoints
+    `0x81` IN and `0x02` OUT. The screen goes black.
+- **Leaving it without flashing (verified):** unplug and replug. The deck boots normally as
+  `6603:1014`, firmware `V3.HSV293S.02.009`, with the custom boot picture intact.
+- **Flashing:** in that mode the vendor's `upgcmdHid.exe` speaks ArtInChip's AICUPG protocol over
+  bulk USB. The Linux tool [artinchip-flash](https://github.com/boa-w/artinchip-flash) implements
+  the same protocol; it needs a udev rule for `33c3:6677`. Not used yet.
+- **No key is a recovery button.** The bootloader's hardware upgrade pin is PA0, active low, and on
+  this board PA0 is the internal UART0 TX pad. The 15 keys are a matrix on port B/C pins.
+- **A broken OS can't be recovered over USB.** If a modified OS fails its CRC check, the
+  bootloader retries forever on the serial console and never enters USB upgrade mode. The same
+  goes for an OS that boots but crashes or loses the `APP` handler. Either case means opening the
+  case to reach PA0 or the UART.
+  - Any OS patch must therefore keep the HID `APP` path working. Changing only the `data`
+    partition, while keeping the stock OS, is the low-risk option.
+- **Never send `APP` casually.** It isn't a handshake: it reboots the deck into upgrade mode.

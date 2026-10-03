@@ -51,7 +51,8 @@ No GIF/multi-frame/animation feature exists.
   BAT  "BAT": state=5 -> key/icon image upload (see below)
   KEY  "KEY": copies 8 bytes report[1..8], FUN_ram_4002a414(0x81,...) (key event inject)
   HAN  "HAN": backlight off (4003298e), f3b4=0
-  APP  "APP": DAT_ram_400a41fa=1 (triggers firmware version print / app handshake)
+  APP  "APP": DAT_ram_400a41fa=1 -> main thread runs "aicupg" = REBOOT INTO USB UPGRADE MODE
+       (corrected; see UPGRADE_NOTES.md). Never send it casually.
   No BGPIC / BGCLE / BGCLE / COLOR / CPOS / LLUM / LMOD / SETLB / DELED / QUCMD / MOD / M_V
   in THIS firmware. Those strings live only in the host SDLibrary1.dll; the device ignores them.
 
