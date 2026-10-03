@@ -134,6 +134,10 @@ press, `0` for a release.
 
 ## Firmware notes
 
+Analysis notes and helper scripts are in `re/` (`re/NOTES.md`, `re/aicimg.py` to unpack an
+`.img`). Local copies of the firmware images, extracted partitions and the Ghidra project live
+in `fw/`, which is gitignored because those files belong to the vendor.
+
 - **Availability:** the official firmware images are on the vendor CDN
   (`https://cdn1.key123.vip/StreamDock/firmware/download/V3.HSV293S.02.009.img`). They are
   ArtInChip `AIC.FW` packages.
