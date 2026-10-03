@@ -1,0 +1,12 @@
+# Local assistant notes
+CLAUDE.md
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Firmware dumps and reverse-engineering scratch (large, vendor-owned)
+*.img
+fw/

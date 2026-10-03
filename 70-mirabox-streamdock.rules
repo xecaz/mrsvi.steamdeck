@@ -1,0 +1,4 @@
+# Mirabox Stream Dock 293S V3 (HOTSPOTEKUSB 6603:1014 / 6603:1005): give the logged-in user raw HID access
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6603", ATTRS{idProduct}=="1014", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="6603", ATTRS{idProduct}=="1005", MODE="0660", TAG+="uaccess"
+SUBSYSTEM=="usb", ATTR{idVendor}=="6603", MODE="0660", TAG+="uaccess"
